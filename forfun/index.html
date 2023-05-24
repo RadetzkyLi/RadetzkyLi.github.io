@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html>
+	<head>
+        <meta charset="utf-8" />
+            <title>Simple Fireworks</title>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=0.5, maximum-scale=2.0, user-scalable=yes" />
+        <title>Simple Fireworks</title>
+        
+        <style>
+            body{
+                background:black;
+                overflow:hidden;
+                margin:0;
+            }
+            canvas{
+                background:#000;
+            }
+            .neon{
+                /* 深色底色，浅色文字，多层浅色文字阴影，弥散大 */
+                background-color: transparent;
+                color: white;
+                text-shadow: 0px 0px 15px #00FFFF,0px 0px 15px #00FFFF,0px 0px 15px #00FFFF;
+                font-size: 7rem;
+                font-family: "楷体";
+                text-align: center;
+            }
+            .hollow{
+                /* 设置文字为透明，设置文本描边*/
+                background-color: transparent;
+                -webkit-text-fill-color: transparent;
+                -webkit-text-stroke:1px #00FFFF;
+                font-size: 7rem;
+                font-family: "楷体";
+                text-align: center;
+            }
+        </style>
+
+        <script src="https://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
+    </head>
+    	
+    <body>
+        <audio id="audioDom" src="https://sf6-cdn-tos.douyinstatic.com/obj/ies-music/7170534431801838367.mp3" preload="auto" loop="loop"></audio>
+
+        <div id = 'startBtn' onclick="clickStart()" style="position: absolute; z-index: 3; left: 0rem; right: 0rem; top: 0rem; bottom: 2rem;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            color: rgb(255, 255, 255); font-size: 1rem; background-color: black;" >
+            <p>💥点爆</p>
+            <img style="width:64px;margin-bottom:24px; " alt="爆竹" src="http://pic.ntimg.cn/file/20191231/12380842_144029710000_2.jpg">
+        </div>
+
+        <div style="position: absolute; z-index: 2; left: 0rem;">
+            <div id="show_text" style="display:none;">
+                人间烟火处，年味渐浓时<br>寒随一夜去，春逐五更来<br>愿新年，胜旧年<br>祝您新年<br>身体健康，灾病不扰，扬眉🐰气！<br><br>荣松于独山
+            </div>
+            <div id="contents" style="font-size:.95rem; line-height:1.5rem; color: white;"></div>
+        </div>
+
+        <div style="top: 0rem; position: absolute; z-index: 1;">
+            <canvas id="canvas" ></canvas>
+        </div>
+
+        <script>
+            /*  Ref: https://xie.infoq.cn/article/1928c13a01353e62fcee005b3 */
+            window.addEventListener("resize", resizeCanvas, false);
+           // window.addEventListener("DOMContentLoaded", onLoad, false);
+            window.requestAnimationFrame = 
+            window.requestAnimationFrame       || 
+            window.webkitRequestAnimationFrame || 
+            window.mozRequestAnimationFrame    || 
+            window.oRequestAnimationFrame      || 
+            window.msRequestAnimationFrame     || 
+            function (callback) {
+                window.setTimeout(callback, 1000/60);
+            };
+
+            // only start after user touches the screen
+            document.body.addEventListener('touchstart', musicInBrowserHandler);
+
+            var canvas, ctx, w, h, particles = [], probability = 0.04,
+                xPoint, yPoint;
+
+            function onLoad() {
+                canvas = document.getElementById("canvas");
+                ctx = canvas.getContext("2d");
+                resizeCanvas();     
+                window.requestAnimationFrame(updateWorld);
+            } 
+            
+            function resizeCanvas() {
+                if (!!canvas) {
+                    w = canvas.width = window.innerWidth;
+                    h = canvas.height = window.innerHeight;
+                }
+            } 
+            
+            function updateWorld() {
+                update();
+                paint();
+                window.requestAnimationFrame(updateWorld);
+            } 
+            
+            function update() {
+                if (particles.length < 500 && Math.random() < probability) {
+                    createFirework();
+                }
+                var alive = [];
+                for (var i=0; i<particles.length; i++) {
+                    if (particles[i].move()) {
+                        alive.push(particles[i]);
+                    }
+                }
+                particles = alive;
+            } 
+            
+            function paint() {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.fillStyle = "rgba(0,0,0,0.2)";
+                ctx.fillRect(0, 0, w, h);
+                ctx.globalCompositeOperation = 'lighter';
+                for (var i=0; i<particles.length; i++) {
+                    particles[i].draw(ctx);
+                }
+            } 
+            
+            function createFirework() {
+                xPoint = Math.random()*(w-200)+100;
+                yPoint = Math.random()*(h-200)+100;
+                var nFire = Math.random()*50+100;
+                var c = "rgb("+(~~(Math.random()*200+55))+","
+                    +(~~(Math.random()*200+55))+","+(~~(Math.random()*200+55))+")";
+                for (var i=0; i<nFire; i++) {
+                    var particle = new Particle();
+                    particle.color = c;
+                    var vy = Math.sqrt(25-particle.vx*particle.vx);
+                    if (Math.abs(particle.vy) > vy) {
+                        particle.vy = particle.vy>0 ? vy: -vy;
+                    }
+                    particles.push(particle);
+                }
+            } 
+            
+            function Particle() {
+                this.w = this.h = Math.random()*4+1;  
+                this.x = xPoint-this.w/2;
+                this.y = yPoint-this.h/2;     
+                this.vx = (Math.random()-0.5)*10;
+                this.vy = (Math.random()-0.5)*10;    
+                this.alpha = Math.random()*.5+.5;     
+                this.color;
+            } 
+            
+            Particle.prototype = {
+                gravity: 0.05,
+                move: function () {
+                    this.x += this.vx;
+                    this.vy += this.gravity;
+                    this.y += this.vy;
+                    this.alpha -= 0.01;
+                    if (this.x <= -this.w || this.x >= screen.width ||
+                        this.y >= screen.height ||
+                        this.alpha <= 0) {
+                            return false;
+                    }
+                    return true;
+                },
+                draw: function (c) {
+                    c.save();
+                    c.beginPath();         
+                    c.translate(this.x+this.w/2, this.y+this.h/2);
+                    c.arc(0, 0, this.w, 0, Math.PI*2);
+                    c.fillStyle = this.color;
+                    c.globalAlpha = this.alpha;         
+                    c.closePath();
+                    c.fill();
+                    c.restore();
+                }
+            } 
+
+            // words are shown in typing style
+            function typeWords() {
+                let str = $("#show_text").html();//"ʸᵒᵘ ᵃʳᵉ ᵗʰᵉ ᵒⁿˡʸ ᵇᵉˢᵗ ᶠᵒʳ ᵐᵉ.<br><br>于我而言，你是最好且是唯一"
+                let str_ = '';
+                let i = 0;
+                let content = document.getElementById('contents');
+                console.log('words:',str);
+                let timer = setInterval(() => {
+                    if (str_.length < str.length) {
+                        str_ += str[i++]
+                        content.innerHTML = '<p>' + str_ + '<span class="xx" style="opacity: 1;    color: red;">❤</span></p>'  //add cursor when print words 
+                    } else {
+                        clearInterval(timer)
+                        content.innerHTML = '<p>' + str_ + '</p>'
+                    }
+                }, 100)
+            }
+            // control music
+            function musicPlay(isPlay) {
+                var media = document.querySelector('#audioDom');
+                if (isPlay && media.paused) {
+                    media.play();
+                }
+                if (!isPlay && !media.paused) {
+                    media.pause();
+                }
+            }
+            function musicInBrowserHandler() {
+                setTimeout(function () {
+                    musicPlay(true)
+                }, 0)
+            }
+            // click start
+            function clickStart(){
+                console.log('A click happened!');
+                $('#startBtn').hide()
+                setTimeout(() => {
+                    onLoad();
+                    typeWords();
+
+                }, 2000)
+                setTimeout(() => {
+                    function audioAutoPlay() {
+                        var audio = document.getElementById('audioDom');
+                        audio.play();
+                    }
+                    audioAutoPlay();
+                }, 1000)
+            }
+        </script>
+    </body>
+</html>
